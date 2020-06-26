@@ -1,7 +1,7 @@
 package uk.co.devproltd.dummy_service
 
 import cats.Monad
-import cats.data.ValidatedNel
+import cats.data.{NonEmptyList, ValidatedNel}
 import io.circe.Encoder
 import io.circe.Encoder.encodeString
 import io.circe.generic.JsonCodec
@@ -24,16 +24,16 @@ abstract class BaseService {
 
   protected class MyServiceDsl[F[_]: Monad] extends Http4sDsl[F] {
 
+    def badRequest(parseFailures: NonEmptyList[ParseFailure]): F[Response[F]] = BadRequest(
+      StandardErrorResponse(
+        errorType = Client,
+        message = s"Bad request: ${parseFailures.toList.map(_.message).mkString("; ")}"
+      ).asJson
+    )
+
     implicit class ValidatedOps[T](val vT: ValidatedNel[ParseFailure, T]) {
       def whenValid(f: T => F[Response[F]]): F[Response[F]] =
-        (vT.fold[F[Response[F]]] _).curried { parseFailures =>
-          BadRequest(
-            StandardErrorResponse(
-              errorType = Client,
-              message = s"Bad request: ${parseFailures.toList.map(_.details).mkString("; ")}"
-            ).asJson
-          )
-        }(f)
+        vT.fold[F[Response[F]]](badRequest, f)
     }
 
   }
