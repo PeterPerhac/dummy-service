@@ -3,31 +3,17 @@ package uk.co.devproltd.dummy_service
 import cats.effect._
 import cats.implicits._
 import io.circe.syntax._
+import org.http4s.HttpRoutes
 import org.http4s.circe._
 import org.http4s.dsl.impl.{OptionalValidatingQueryParamDecoderMatcher, ValidatingQueryParamDecoderMatcher}
-import org.http4s.{HttpRoutes, ParseFailure, QueryParamDecoder}
 import uk.co.devproltd.dummy_service.Books.books
 
 object DummyService extends BaseService {
 
-  final case class PageSize(size: Int)
-
-  implicit val pageSizeQueryParamDecoder: QueryParamDecoder[PageSize] =
-    QueryParamDecoder[Int].emap(
-      num =>
-        Either.cond(
-          num > 0 && num <= 100,
-          PageSize(num),
-          ParseFailure(s"Invalid pageSize", "Allowable range 1..100")
-        )
-    )
-
   object PageSizeParamMatcher extends ValidatingQueryParamDecoderMatcher[PageSize]("pageSize")
-
   object AfterParamMatcher extends OptionalValidatingQueryParamDecoderMatcher[Long]("after")
-  QueryParamDecoder.longQueryParamDecoder
 
-  def dummyService[F[_]: Sync]: HttpRoutes[F] = {
+  def service[F[_]: Sync]: HttpRoutes[F] = {
     val dsl = new MyServiceDsl[F] {}
     import dsl._
 
